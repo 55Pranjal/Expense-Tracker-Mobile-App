@@ -23,7 +23,24 @@ export const addExpense = async (req, res) => {
 // @route   GET /api/expenses
 export const getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find({ userId: req.user }).sort({
+    const { startDate, endDate, category, search } = req.query;
+    let query = { userId: req.user };
+
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (search) {
+      query.note = { $regex: search, $options: "i" };
+    }
+
+    const expenses = await Expense.find(query).sort({
       date: -1,
     });
 

@@ -7,7 +7,9 @@ import {
   TouchableOpacity, 
   Alert,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  TextInput,
+  Modal
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ExpenseContext } from '../../context/ExpenseContext';
@@ -28,6 +30,30 @@ export const CATEGORY_COLORS = {
 export default function ExpenseListScreen({ navigation }) {
   const { expenses, loading, error, loadExpenses, removeExpense } = useContext(ExpenseContext);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const applyFilters = () => {
+    loadExpenses({
+      search: searchQuery,
+      category: selectedCategory,
+      startDate,
+      endDate
+    });
+    setFilterModalVisible(false);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('');
+    setStartDate('');
+    setEndDate('');
+    loadExpenses({});
+    setFilterModalVisible(false);
+  };
 
   useEffect(() => {
     loadExpenses();
@@ -35,9 +61,9 @@ export default function ExpenseListScreen({ navigation }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadExpenses();
+    await loadExpenses({ search: searchQuery, category: selectedCategory, startDate, endDate });
     setRefreshing(false);
-  }, [loadExpenses]);
+  }, [loadExpenses, searchQuery, selectedCategory, startDate, endDate]);
 
   const handleDelete = (id) => {
     Alert.alert(
@@ -120,6 +146,21 @@ export default function ExpenseListScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <MaterialIcons name="search" size={24} color="#888" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search notes..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={applyFilters}
+          returnKeyType="search"
+        />
+        <TouchableOpacity style={styles.filterButton} onPress={() => setFilterModalVisible(true)}>
+          <MaterialIcons name="filter-list" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={[...expenses].sort((a, b) => new Date(b.date) - new Date(a.date))}
         keyExtractor={(item) => item._id}
@@ -137,6 +178,61 @@ export default function ExpenseListScreen({ navigation }) {
       >
         <MaterialIcons name="add" size={24} color="#fff" />
       </TouchableOpacity>
+
+      <Modal visible={filterModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Expenses</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <MaterialIcons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.filterLabel}>Category</Text>
+            <View style={styles.chipContainer}>
+              <TouchableOpacity
+                style={[styles.chip, !selectedCategory && styles.chipActive]}
+                onPress={() => setSelectedCategory('')}
+              >
+                <Text style={[styles.chipText, !selectedCategory && styles.chipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {Object.keys(CATEGORY_COLORS).map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chip, selectedCategory === cat && styles.chipActive]}
+                  onPress={() => setSelectedCategory(cat)}
+                >
+                  <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.filterLabel}>Date Range (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.dateInput}
+              placeholder="Start Date"
+              value={startDate}
+              onChangeText={setStartDate}
+            />
+            <TextInput
+              style={styles.dateInput}
+              placeholder="End Date"
+              value={endDate}
+              onChangeText={setEndDate}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+                <Text style={styles.clearButtonText}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.applyButton} onPress={applyFilters}>
+                <Text style={styles.applyButtonText}>Apply Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -156,6 +252,36 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 80,
     flexGrow: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: 28,
+    zIndex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingLeft: 40,
+    paddingRight: 16,
+    fontSize: 16,
+    marginRight: 12,
+  },
+  filterButton: {
+    backgroundColor: primaryColor,
+    padding: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
     backgroundColor: '#fff',
@@ -263,6 +389,100 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    minHeight: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  chipActive: {
+    backgroundColor: primaryColor,
+    borderColor: primaryColor,
+  },
+  chipText: {
+    color: '#555',
+  },
+  chipTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  dateInput: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 32,
+    gap: 16,
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: primaryColor,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    color: primaryColor,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  applyButton: {
+    flex: 1,
+    backgroundColor: primaryColor,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

@@ -20,11 +20,20 @@ export const ExpenseProvider = ({ children }) => {
     throw new Error(msg);
   };
 
-  const loadExpenses = useCallback(async () => {
+  const loadExpenses = useCallback(async (filters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/expenses');
+      const params = new URLSearchParams();
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.search) params.append('search', filters.search);
+      
+      const queryString = params.toString();
+      const url = `/expenses${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await api.get(url);
       const data = response.data;
       setExpenses(Array.isArray(data) ? data : data.expenses || []);
     } catch (err) {
