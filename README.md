@@ -1,50 +1,91 @@
-# Welcome to your Expo app 👋
+# Expense Tracker App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A full-stack mobile application built with React Native (Expo) + Node.js + MongoDB.
 
-## Get started
+## Features
 
-1. Install dependencies
+- JWT-based user authentication (register/login/logout)
+- Add, edit, delete expense records (amount, category, date, note)
+- Dashboard with category-wise expense summary and progress bars
+- REST API with Express.js + MongoDB
+- Loading states, empty states, and form validation throughout
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## Project Structure
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+expense-tracker/
+├── backend/
+│   ├── controllers/        # Business logic
+│   ├── middleware/          # JWT auth middleware
+│   ├── models/             # Mongoose schemas
+│   ├── routes/             # Express routes
+│   └── server.js
+└── frontend/
+    └── src/
+        ├── context/        # AuthContext, ExpenseContext (state management)
+        ├── navigation/     # React Navigation setup
+        ├── screens/        # Auth, Dashboard, Expenses
+        └── services/       # Axios API layer
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Setup & Run
 
-To learn more about developing your project with Expo, look at the following resources:
+### Prerequisites
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Node.js (v18+)
+- MongoDB running locally or a MongoDB Atlas URI
+- Expo Go app on your phone (or an emulator)
 
-## Join the community
+### Backend
 
-Join our community of developers creating universal apps.
+```bash
+cd backend
+cp .env.example .env       # Fill in your MONGO_URI and JWT_SECRET
+npm install
+npm run dev                # Runs on http://localhost:5000
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Frontend
+
+```bash
+cd frontend
+npm install
+```
+
+Open `src/services/api.js` and update `BASE_URL`:
+- **Android emulator**: `http://10.0.2.2:5000/api` (default)
+- **iOS simulator**: `http://localhost:5000/api`
+- **Real device**: `http://<your-local-ip>:5000/api`
+
+```bash
+npx expo start
+```
+
+Scan the QR code with Expo Go on your phone.
+
+---
+
+## API Endpoints
+
+| Method | Route | Description | Auth |
+|--------|-------|-------------|------|
+| POST | `/api/auth/register` | Register new user | No |
+| POST | `/api/auth/login` | Login | No |
+| GET | `/api/auth/me` | Get current user | Yes |
+| GET | `/api/expenses` | List expenses | Yes |
+| POST | `/api/expenses` | Create expense | Yes |
+| PUT | `/api/expenses/:id` | Update expense | Yes |
+| DELETE | `/api/expenses/:id` | Delete expense | Yes |
+| GET | `/api/expenses/summary` | Category-wise totals | Yes |
+
+---
+
+## Tech Stack
+
+**Frontend**: React Native, Expo, React Navigation, Axios, Context API, expo-secure-store
+
+**Backend**: Node.js, Express.js, MongoDB, Mongoose, JWT, bcryptjs
