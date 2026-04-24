@@ -7,9 +7,13 @@ import {
   TouchableOpacity, 
   ActivityIndicator,
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Platform,
+  Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { PieChart, LineChart } from 'react-native-chart-kit';
 import { ExpenseContext } from '../../context/ExpenseContext';
 import { AuthContext } from '../../context/AuthContext';
@@ -32,6 +36,52 @@ export default function DashboardScreen({ navigation }) {
     await loadExpenses();
     setRefreshing(false);
   }, [loadExpenses]);
+
+  const exportToCSV = async () => {
+    try {
+      if (!expenses || expenses.length === 0) {
+        Alert.alert('No Data', 'There are no expenses to export.');
+        return;
+      }
+
+      const header = 'Date,Type,Category,Amount,Note\n';
+      const rows = expenses.map(e => {
+        const date = new Date(e.date).toISOString().split('T')[0];
+        const type = e.type || 'expense';
+        const category = e.category || '';
+        const amount = e.amount;
+        const note = e.note ? `"${e.note.replace(/"/g, '""')}"` : '';
+        return `${date},${type},${category},${amount},${note}`;
+      }).join('\n');
+      
+      const csvData = header + rows;
+      
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'expenses.csv';
+        link.click();
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}expenses.csv`;
+        await FileSystem.writeAsStringAsync(fileUri, csvData);
+
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            dialogTitle: 'Export Expenses',
+            UTI: 'public.comma-separated-values-text'
+          });
+        } else {
+          Alert.alert('Export Complete', `File saved to: ${fileUri}`);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to export data.');
+    }
+  };
 
   const { totalExpense, totalIncome, balance, categoryStats, pieChartData, lineChartData } = useMemo(() => {
     if (!expenses || expenses.length === 0) {
@@ -142,13 +192,18 @@ export default function DashboardScreen({ navigation }) {
         }
       >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Hello, {user?.name || 'User'}!</Text>
-            <Text style={styles.subtitle}>Here is your expense summary</Text>
+          <View style={{ flex: 1, marginRight: 16 }}>
+            <Text style={styles.greeting} numberOfLines={1}>Hello, {user?.name || 'User'}!</Text>
+            <Text style={styles.subtitle} numberOfLines={1}>Here is your expense summary</Text>
           </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-            <MaterialIcons name="logout" size={24} color="#FF6B6B" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={exportToCSV} style={styles.iconButton}>
+              <MaterialIcons name="file-download" size={24} color={primaryColor} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={logout} style={[styles.iconButton, { marginLeft: 8 }]}>
+              <MaterialIcons name="logout" size={24} color="#FF6B6B" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.balanceCard}>
@@ -289,7 +344,11 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  logoutButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
     padding: 8,
     backgroundColor: '#fff',
     borderRadius: 8,
