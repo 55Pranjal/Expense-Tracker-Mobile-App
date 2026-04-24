@@ -6,7 +6,7 @@ import {
   deleteExpense,
 } from "../controllers/expenseController.js";
 
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
