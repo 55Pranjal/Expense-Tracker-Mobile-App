@@ -21,6 +21,7 @@ export default function AddEditExpenseScreen({ route, navigation }) {
   const expenseToEdit = route.params?.expense;
   const isEditMode = !!expenseToEdit;
 
+  const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -35,6 +36,7 @@ export default function AddEditExpenseScreen({ route, navigation }) {
     });
 
     if (isEditMode) {
+      setType(expenseToEdit.type || 'expense');
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
       setDate(new Date(expenseToEdit.date).toISOString().split('T')[0]);
@@ -51,7 +53,7 @@ export default function AddEditExpenseScreen({ route, navigation }) {
       isValid = false;
     }
 
-    if (!category) {
+    if (type === 'expense' && !category) {
       newErrors.category = 'Please select a category';
       isValid = false;
     }
@@ -83,8 +85,9 @@ export default function AddEditExpenseScreen({ route, navigation }) {
     setSaving(true);
     
     const expenseData = {
+      type,
       amount: parseFloat(amount),
-      category,
+      category: type === 'income' ? 'Income' : category,
       date,
       note: note.trim()
     };
@@ -112,6 +115,21 @@ export default function AddEditExpenseScreen({ route, navigation }) {
         
         {errors.form ? <Text style={styles.errorTextCenter}>{errors.form}</Text> : null}
 
+        <View style={styles.typeSelector}>
+          <TouchableOpacity 
+            style={[styles.typeButton, type === 'expense' && styles.typeButtonActive]}
+            onPress={() => setType('expense')}
+          >
+            <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>Expense</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.typeButton, type === 'income' && styles.typeButtonIncome]}
+            onPress={() => setType('income')}
+          >
+            <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>Income</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Amount</Text>
           <TextInput
@@ -124,26 +142,28 @@ export default function AddEditExpenseScreen({ route, navigation }) {
           {errors.amount ? <Text style={styles.errorText}>{errors.amount}</Text> : null}
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Category</Text>
-          <View style={styles.chipContainer}>
-            {CATEGORIES.map(cat => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.chip,
-                  category === cat && { backgroundColor: CATEGORY_COLORS[cat] || primaryColor, borderColor: CATEGORY_COLORS[cat] || primaryColor }
-                ]}
-                onPress={() => { setCategory(cat); setErrors({...errors, category: null}); }}
-              >
-                <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {type === 'expense' && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.chipContainer}>
+              {CATEGORIES.map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.chip,
+                    category === cat && { backgroundColor: CATEGORY_COLORS[cat] || primaryColor, borderColor: CATEGORY_COLORS[cat] || primaryColor }
+                  ]}
+                  onPress={() => { setCategory(cat); setErrors({...errors, category: null}); }}
+                >
+                  <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {errors.category ? <Text style={styles.errorText}>{errors.category}</Text> : null}
           </View>
-          {errors.category ? <Text style={styles.errorText}>{errors.category}</Text> : null}
-        </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
@@ -199,6 +219,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 4,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  typeButtonActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  typeButtonIncome: {
+    backgroundColor: '#4ECDC4',
+  },
+  typeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#888',
+  },
+  typeTextActive: {
+    color: '#fff',
   },
   inputGroup: {
     marginBottom: 20,

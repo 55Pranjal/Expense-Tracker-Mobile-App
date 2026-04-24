@@ -3,13 +3,14 @@ import Expense from "../models/Expense.js";
 // @route   POST /api/expenses
 export const addExpense = async (req, res) => {
   try {
-    const { amount, category, note, date } = req.body;
+    const { amount, category, note, date, type } = req.body;
 
     const expense = await Expense.create({
       userId: req.user,
       amount,
       category,
       note,
+      type: type || 'expense',
       date,
     });
 

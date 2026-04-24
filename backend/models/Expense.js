@@ -5,6 +5,7 @@ const expenseSchema = new mongoose.Schema({
   amount: Number,
   category: String,
   note: String,
+  type: { type: String, enum: ['income', 'expense'], default: 'expense' },
   date: { type: Date, default: Date.now }
 });
 

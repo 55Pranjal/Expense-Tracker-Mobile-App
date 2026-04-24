@@ -6,14 +6,17 @@ import {
   ScrollView, 
   TouchableOpacity, 
   ActivityIndicator,
-  RefreshControl 
+  RefreshControl,
+  Dimensions
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { PieChart, LineChart } from 'react-native-chart-kit';
 import { ExpenseContext } from '../../context/ExpenseContext';
 import { AuthContext } from '../../context/AuthContext';
 import { CATEGORY_COLORS } from '../Expenses/ExpenseListScreen';
 
 const primaryColor = '#6C63FF';
+const screenWidth = Dimensions.get('window').width;
 
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -30,35 +33,83 @@ export default function DashboardScreen({ navigation }) {
     setRefreshing(false);
   }, [loadExpenses]);
 
-  const { totalSpent, categoryStats } = useMemo(() => {
+  const { totalExpense, totalIncome, balance, categoryStats, pieChartData, lineChartData } = useMemo(() => {
     if (!expenses || expenses.length === 0) {
-      return { totalSpent: 0, categoryStats: [] };
+      return { totalExpense: 0, totalIncome: 0, balance: 0, categoryStats: [], pieChartData: [], lineChartData: null };
     }
 
-    let total = 0;
+    let expTotal = 0;
+    let incTotal = 0;
     const statsMap = {};
 
-    expenses.forEach(exp => {
-      total += exp.amount;
-      if (!statsMap[exp.category]) {
-        statsMap[exp.category] = { amount: 0, count: 0 };
+    const today = new Date();
+    const last7Days = Array.from({length: 7}, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      return d.toISOString().split('T')[0];
+    }).reverse();
+
+    const dailyExpenseMap = {};
+    last7Days.forEach(dateStr => dailyExpenseMap[dateStr] = 0);
+
+    expenses.forEach(item => {
+      const isIncome = item.type === 'income';
+      if (isIncome) {
+        incTotal += item.amount;
+      } else {
+        expTotal += item.amount;
+        if (!statsMap[item.category]) {
+          statsMap[item.category] = { amount: 0, count: 0 };
+        }
+        statsMap[item.category].amount += item.amount;
+        statsMap[item.category].count += 1;
+
+        const expDate = new Date(item.date).toISOString().split('T')[0];
+        if (dailyExpenseMap[expDate] !== undefined) {
+          dailyExpenseMap[expDate] += item.amount;
+        }
       }
-      statsMap[exp.category].amount += exp.amount;
-      statsMap[exp.category].count += 1;
     });
 
     const statsArray = Object.keys(statsMap).map(category => {
       const { amount, count } = statsMap[category];
-      const percentage = total > 0 ? (amount / total) * 100 : 0;
+      const percentage = expTotal > 0 ? (amount / expTotal) * 100 : 0;
       return {
         category,
         amount,
         count,
         percentage
       };
-    }).sort((a, b) => b.amount - a.amount); // Sort by highest amount
+    }).sort((a, b) => b.amount - a.amount);
 
-    return { totalSpent: total, categoryStats: statsArray };
+    const pieChartData = statsArray.map(stat => ({
+      name: stat.category,
+      amount: stat.amount,
+      color: CATEGORY_COLORS[stat.category] || CATEGORY_COLORS.Other,
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 12
+    }));
+
+    const lineChartData = {
+      labels: last7Days.map(d => {
+        const [, m, day] = d.split('-');
+        return `${m}/${day}`;
+      }),
+      datasets: [
+        {
+          data: last7Days.map(d => dailyExpenseMap[d])
+        }
+      ]
+    };
+
+    return { 
+      totalExpense: expTotal, 
+      totalIncome: incTotal, 
+      balance: incTotal - expTotal,
+      categoryStats: statsArray,
+      pieChartData,
+      lineChartData
+    };
   }, [expenses]);
 
   if (loading && !refreshing && expenses.length === 0) {
@@ -100,9 +151,23 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Total Spent</Text>
-          <Text style={styles.totalValue}>${totalSpent.toFixed(2)}</Text>
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text style={styles.balanceValue}>${balance.toFixed(2)}</Text>
+          
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <MaterialIcons name="arrow-downward" size={16} color="#4ECDC4" />
+              <Text style={styles.summaryLabel}>Income</Text>
+              <Text style={styles.summaryValueIncome}>+${totalIncome.toFixed(2)}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <MaterialIcons name="arrow-upward" size={16} color="#FF6B6B" />
+              <Text style={styles.summaryLabel}>Expense</Text>
+              <Text style={styles.summaryValueExpense}>-${totalExpense.toFixed(2)}</Text>
+            </View>
+          </View>
         </View>
 
         {categoryStats.length === 0 ? (
@@ -113,7 +178,45 @@ export default function DashboardScreen({ navigation }) {
           </View>
         ) : (
           <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>Category Breakdown</Text>
+            {lineChartData && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.sectionTitle}>Expense Trends (Last 7 Days)</Text>
+                <LineChart
+                  data={lineChartData}
+                  width={screenWidth - 48}
+                  height={220}
+                  yAxisLabel="$"
+                  chartConfig={{
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(108, 99, 255, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: { borderRadius: 16 },
+                    propsForDots: { r: "6", strokeWidth: "2", stroke: "#6C63FF" }
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 16 }}
+                />
+              </View>
+            )}
+
+            <View style={styles.chartContainer}>
+              <Text style={styles.sectionTitle}>Category Breakdown</Text>
+              <PieChart
+                data={pieChartData}
+                width={screenWidth - 48}
+                height={200}
+                chartConfig={{ color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})` }}
+                accessor={"amount"}
+                backgroundColor={"transparent"}
+                paddingLeft={"15"}
+                absolute
+              />
+            </View>
+
+            <Text style={styles.sectionTitle}>Details</Text>
             
             {categoryStats.map(stat => {
               const color = CATEGORY_COLORS[stat.category] || CATEGORY_COLORS.Other;
@@ -196,7 +299,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  totalCard: {
+  balanceCard: {
     backgroundColor: primaryColor,
     borderRadius: 16,
     padding: 24,
@@ -208,15 +311,51 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  totalLabel: {
+  balanceLabel: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 16,
     marginBottom: 8,
   },
-  totalValue: {
+  balanceValue: {
     color: '#fff',
     fontSize: 36,
     fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  summaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  summaryDivider: {
+    width: 1,
+    height: '80%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  summaryLabel: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  summaryValueIncome: {
+    color: '#4ECDC4',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  summaryValueExpense: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
@@ -226,6 +365,18 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     marginBottom: 24,
+  },
+  chartContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    alignItems: 'center',
   },
   statCard: {
     backgroundColor: '#fff',
