@@ -93,7 +93,7 @@ export default function ExpenseListScreen({ navigation }) {
           <View style={styles.cardHeader}>
             <Text style={styles.categoryText}>{item.category}</Text>
             <Text style={[styles.amountText, item.type === 'income' && styles.incomeText]}>
-              {item.type === 'income' ? '+' : '-'}${item.amount.toFixed(2)}
+              {item.type === 'income' ? '+' : '-'}₹{item.amount.toFixed(2)}
             </Text>
           </View>
           <Text style={styles.dateText}>{new Date(item.date).toLocaleDateString()}</Text>

@@ -208,19 +208,19 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Total Balance</Text>
-          <Text style={styles.balanceValue}>${balance.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>₹{balance.toFixed(2)}</Text>
           
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <MaterialIcons name="arrow-downward" size={16} color="#4ECDC4" />
               <Text style={styles.summaryLabel}>Income</Text>
-              <Text style={styles.summaryValueIncome}>+${totalIncome.toFixed(2)}</Text>
+              <Text style={styles.summaryValueIncome}>+₹{totalIncome.toFixed(2)}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <MaterialIcons name="arrow-upward" size={16} color="#FF6B6B" />
               <Text style={styles.summaryLabel}>Expense</Text>
-              <Text style={styles.summaryValueExpense}>-${totalExpense.toFixed(2)}</Text>
+              <Text style={styles.summaryValueExpense}>-₹{totalExpense.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -240,7 +240,7 @@ export default function DashboardScreen({ navigation }) {
                   data={lineChartData}
                   width={screenWidth - 48}
                   height={220}
-                  yAxisLabel="$"
+                  yAxisLabel="₹"
                   chartConfig={{
                     backgroundColor: '#ffffff',
                     backgroundGradientFrom: '#ffffff',
@@ -283,7 +283,7 @@ export default function DashboardScreen({ navigation }) {
                       <Text style={styles.statCategory}>{stat.category}</Text>
                       <Text style={styles.statCount}>({stat.count} {stat.count === 1 ? 'item' : 'items'})</Text>
                     </View>
-                    <Text style={styles.statAmount}>${stat.amount.toFixed(2)}</Text>
+                    <Text style={styles.statAmount}>₹{stat.amount.toFixed(2)}</Text>
                   </View>
                   
                   <View style={styles.progressContainer}>
