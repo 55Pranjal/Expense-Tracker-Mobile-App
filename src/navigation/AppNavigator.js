@@ -12,6 +12,7 @@ import RegisterScreen from '../screens/Auth/RegisterScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import ExpenseListScreen from '../screens/Expenses/ExpenseListScreen';
 import AddEditExpenseScreen from '../screens/Expenses/AddEditExpenseScreen';
+import UnlockScreen from '../screens/Auth/UnlockScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -51,7 +52,7 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading, isUnlocked } = useContext(AuthContext);
 
   if (loading) {
     return (
@@ -65,18 +66,22 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen 
-              name="AddEditExpense" 
-              component={AddEditExpenseScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Expense',
-                presentation: 'modal'
-              }} 
-            />
-          </>
+          isUnlocked ? (
+            <>
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen 
+                name="AddEditExpense" 
+                component={AddEditExpenseScreen} 
+                options={{ 
+                  headerShown: true, 
+                  title: 'Expense',
+                  presentation: 'modal'
+                }} 
+              />
+            </>
+          ) : (
+            <Stack.Screen name="Unlock" component={UnlockScreen} />
+          )
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}

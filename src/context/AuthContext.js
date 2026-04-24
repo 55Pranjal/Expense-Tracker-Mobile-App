@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 import api from '../services/api';
 
 export const AuthContext = createContext();
@@ -8,9 +9,26 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   useEffect(() => {
     checkLoggedInUser();
+
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        if (Platform.OS !== 'web') {
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+          if (hasHardware && isEnrolled) {
+            setIsUnlocked(false);
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const checkLoggedInUser = async () => {
@@ -27,6 +45,14 @@ export const AuthProvider = ({ children }) => {
       
       if (token && storedUser) {
         setUser(JSON.parse(storedUser));
+        
+        if (Platform.OS !== 'web') {
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+          setIsUnlocked(!(hasHardware && isEnrolled));
+        } else {
+          setIsUnlocked(true);
+        }
       }
     } catch (e) {
       console.error('Failed to restore token', e);
@@ -49,6 +75,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       setUser(userData);
+      setIsUnlocked(true);
       return { success: true };
     } catch (error) {
       const message = error.response?.data?.message || 'Login failed';
@@ -70,6 +97,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       setUser(userData);
+      setIsUnlocked(true);
       return { success: true };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
@@ -92,8 +120,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const authenticate = async () => {
+    if (Platform.OS === 'web') {
+      setIsUnlocked(true);
+      return;
+    }
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Unlock Expense Tracker',
+      fallbackLabel: 'Use Passcode',
+    });
+    if (result.success) {
+      setIsUnlocked(true);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, isUnlocked, login, register, logout, authenticate }}>
       {children}
     </AuthContext.Provider>
   );
