@@ -1,5 +1,5 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useContext, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -8,8 +8,23 @@ const primaryColor = '#6C63FF';
 export default function UnlockScreen() {
   const { authenticate, logout } = useContext(AuthContext);
 
+  const appState = useRef(AppState.currentState);
+
   useEffect(() => {
-    authenticate();
+    if (appState.current === 'active') {
+      authenticate();
+    }
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        authenticate();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, [authenticate]);
 
   return (

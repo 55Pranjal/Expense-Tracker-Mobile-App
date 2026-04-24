@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { Platform, AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     checkLoggedInUser();
 
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
+      if (nextAppState === 'background') {
         if (Platform.OS !== 'web') {
           const hasHardware = await LocalAuthentication.hasHardwareAsync();
           const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -120,19 +120,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const authenticate = async () => {
-    if (Platform.OS === 'web') {
-      setIsUnlocked(true);
-      return;
+  const authenticate = useCallback(async () => {
+    try {
+      if (Platform.OS === 'web') {
+        setIsUnlocked(true);
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock Expense Tracker',
+        fallbackLabel: 'Use Passcode',
+      });
+      if (result.success) {
+        setIsUnlocked(true);
+      }
+    } catch (err) {
+      console.log('Auth error:', err);
     }
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock Expense Tracker',
-      fallbackLabel: 'Use Passcode',
-    });
-    if (result.success) {
-      setIsUnlocked(true);
-    }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading, isUnlocked, login, register, logout, authenticate }}>
